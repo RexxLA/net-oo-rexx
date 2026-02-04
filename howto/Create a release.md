@@ -8,6 +8,8 @@ Create the zip files.
 - net-oo-rexx.ubuntu2404.x86_64-portable-release-20260117.zip
 - net-oo-rexx.windows.x86_64-portable-release-20260117.zip
 
+**Don't push the zip files in the Gihub repository.**
+
 Click on Create a new release.
 
 In the Tag field, create a new tag 20260117.  
@@ -27,7 +29,7 @@ For testing, you can save as draft.
 This draft release won’t be seen by the public unless it is published
 
 You can retrieve the draft release in the list of releases  
-(click Releases on the right, it's a link despite nothing shows it's a link).
+(click **Releases** on the right, it's a link despite nothing shows it's a link).
 
 When ready to publish,
 
