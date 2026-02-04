@@ -35,6 +35,9 @@ When ready to publish,
 - click the pen button to edit the release.
 - click Publish release.
 
+Note:  
+Github automatically adds auto-generated source code archives (source code.zip and source code.tar.gz).  
+It's not possible to remove them.
 
 More details:  
 [https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository)
