@@ -3,7 +3,7 @@ call header "Deliver TUTOR"
 signal on syntax name error
 
 use arg not_used -- only .SysCArgs is used
-call assert .SysCArgs~items <= 2, 93.900, "0..2 argument(s) expected: [cache [, delivery]]"
+call assert .SysCArgs~items <= 2, 93.900, "0..2 argument(s) expected: [cache [delivery]]"
 
 call pushd
 cache = setupCache(.SysCArgs[1], /*okToCreate:*/.false)

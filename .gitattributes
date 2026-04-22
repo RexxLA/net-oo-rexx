@@ -7,13 +7,16 @@
 *.bmp           binary
 *.c             text
 *.cat           text
+*.class         binary
 *.cls           text
 *.cpp           text
 *.csh           text eol=lf
+*.dll           binary
 *.doc           binary
 *.def           text
 *.dsp           text
 *.dsw           text
+*.dylib         binary
 *.fnc           text
 *.frm           text
 *.gif           binary
@@ -26,6 +29,7 @@
 *.inc           text
 *.inp           text
 *.jap           text
+*.jar           binary
 *.jpg           binary
 *.m4            text
 *.mak           text
@@ -35,12 +39,14 @@
 *.nsh           text
 *.odt           binary
 *.orx           text
+*.pdf           binary
 *.png           binary
 *.rc            text
 *.res           binary
 *.rex           text
 *.sh            text eol=lf
 *.sgml          text
+*.so            binary
 *.spec          text
 *.src           text
 *.tar           binary

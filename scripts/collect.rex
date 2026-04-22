@@ -1,11 +1,13 @@
 signal on syntax name error
 
 use arg not_used -- only .SysCArgs is used
-call assert .SysCArgs~items <= 2, 93.900, "0..2 argument(s) expected: [cache [, delivery]]"
+call assert .SysCArgs~items <= 2, 93.900, "0..2 argument(s) expected: [cache [delivery]]"
 
 cache = setupCache(.SysCArgs[1])
 
+call "collect_bsf4oorexx850.rex"    ; if result \== 0 then exit result
 call "collect_executor.rex"         ; if result \== 0 then exit result
+call "collect_netrexx.rex"          ; if result \== 0 then exit result
 call "collect_oorexx.rex"           ; if result \== 0 then exit result
 call "collect_oorexxdebugger.rex"   ; if result \== 0 then exit result
 call "collect_rexx-parser.rex"      ; if result \== 0 then exit result

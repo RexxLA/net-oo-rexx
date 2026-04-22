@@ -1,0 +1,42 @@
+/* Rony G. Flatscher, 2007-02-28, 2007-03-26 */
+
+/* as of 2007-03-26: */
+
+  @media all {
+    body, table {font-family: arial,sans-serif; font-size: x-small;}
+    body        {background: #FFFFFF; margin-top: 6px; margin-left: 6px;}
+    th          {background: #336699; color: #FFFFFF; text-align: left;}
+    tr.even     {background: #E5F2FF;}
+
+    tr.trace    {color: navy;   font-style: italic; }
+    tr.debug    {color: blue;   font-style: italic; }
+    tr.info     {color: black;                      }
+    tr.warn     {color: orange;                     }
+    tr.error    {color: brown;  font-weight: 900;   }
+    tr.fatal    {color: red;    font-weight: 900;   }
+
+    table       {border-spacing: 1px; padding: 4px; border: 1px;
+                 border-color: #224466; width: 100%;}
+
+    table.coll  {border-spacing: 0px; padding: 4px;
+                 border: 1px;   border-color: #224466;
+                 width: 100%;   font-weight: normal;
+                 text-align: left;
+                }
+
+    table.condition  {border-spacing: 0px; padding: 4px;
+                 background: thistle;
+                 font-style: normal;  color: black;
+                }
+
+    table.coll td.index {font-weight: bolder; width: 20%;
+                         vertical-align: top}
+    table.coll td.item  {font-weight: normal; width: 80%;}
+    table.coll td span.subitem {font-family: mono, Courier;}
+
+  }
+
+  @media print {
+    body  {font-size: 8pt;}
+    table {padding: 0px; font-size: 8pt; }
+  }

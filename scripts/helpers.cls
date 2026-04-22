@@ -7,22 +7,8 @@
 
 -- Global settings
 .local~sayConditionStack = .true
-.local~verboseAddress = .false
-.local~verboseChangeDirectory = .false
+call getEnvironmentBoolean "verbose"
 
--- Scoped to their functionality, these settings can be overridden by global
--- settings.
--- For example, even if verboseGitCollect is false, you can still see the
--- commands executed by gitCollect (and all other routines) by setting
--- verboseAddress to true.
--- Conversely, if you want to see only the commands executed by gitCollect,
--- set verboseGitCollect to true and keep verboseAddress set to false.
-.local~verboseGitCollect = .false
-.local~verboseGitSparseCollect = .false
-.local~verbosePushdPopd = .false
-.local~verboseRobocopy = .false
-.local~verboseRsync = .false
-.local~verboseSvnCollect = .false
 
 /*
 Error 40 - Incorrect call to routine.
@@ -32,7 +18,20 @@ Error 93 - Incorrect call to method.
 Error 98 - Execution error.
 */
 
--- ::options trace i
+
+--------------------------------------------------------------------------------
+::routine getEnvironmentBoolean
+    -- Get varname boolean value from ENVIRONMENT (case sensitive), store it in .local[varname~upper]
+    use strict arg varname, defaultValue=.false
+
+    value = value(varname,, "ENVIRONMENT")
+    if value == "" then value = defaultValue
+    -- Can't use assert here, because can't be trapped properly when ::requires "helpers.cls"
+    condition = (value == "0" | value == "1")
+    call warning condition, 88.900, "The value of the environment variable '" || varname || "' is '" || value || "'. Expected 0 or 1, using 0"
+    if \ condition then value = .false
+    .local[varname~upper] = value
+
 
 --------------------------------------------------------------------------------
 ::routine "prettySettings" private
@@ -49,11 +48,14 @@ Error 98 - Execution error.
     settings~cache      = "Cache =    "
     settings~copyFile   = "Copy file  "
     settings~copyDir    = "Copy dir   "     -- the first trailing space will be replaced by one letter: "C" or "D"
-    settings~createdDir = "Created dir"
+    settings~createDir  = "Create dir "
     settings~delivery   = "Delivery = "
+    settings~download   = "Download   "
     settings~github     = "Github =   "
     settings~mirrorDir  = "Mirror dir "     -- the first trailing space will be replaced by one letter: "C" or "D"
+    settings~move       = "Move       "
     settings~renameDir  = "Rename dir "
+    settings~unzip      = "Unzip      "
 
     return settings
 
@@ -98,6 +100,14 @@ Error 98 - Execution error.
 ::routine "quoted" public
     use strict arg string, quote='"'
     return quote || string || quote
+
+
+--------------------------------------------------------------------------------
+::routine "warning" public
+    use strict arg value, errorCode, errorText
+
+    if value == .true then return
+    .traceOutput~say("Warning" errorCode errorText)
 
 
 --------------------------------------------------------------------------------
@@ -234,6 +244,25 @@ Error 98 - Execution error.
 
 
 --------------------------------------------------------------------------------
+::routine "answerToQuestion" private
+    use strict arg question
+
+    -- On Windows, stdout may be piped through `findstr "^"` to have a well-aligned output.
+    -- For the question to be visible, a newline must be displayed after the question because of `findstr`buffering.
+    if isaTerminal("stdout") then do
+        call charout , question -- best display; cursor on the same line
+    end
+    else do
+        endOfLine = ""
+        -- On Windows, `say` is not enough; an additional line break is required.
+        if .RexxInfo~platform~caselessEquals("WINDOWSNT") then endOfLine = .endOfLine
+        say question endOfLine -- cursor on the next line (empty)
+    end
+    parse linein answer
+    return answer
+
+
+--------------------------------------------------------------------------------
 ::routine "setupCache" public
     use strict arg cache, okToCreate=.true
 
@@ -245,14 +274,16 @@ Error 98 - Execution error.
     settings = prettySettings()
     .traceOutput~say(settings~cache quoted(cache))
 
-    call gitPrerequisites cache
-    call svnPrerequisites cache
+    if okToCreate then do
+        call gitPrerequisites cache
+        call svnPrerequisites cache
+    end
 
     if cache~exists then call assert cache~isDirectory, 48.900, cache "is not a directory"
     else do
         call assert okToCreate, 98.900, "The cache directory should exist. Did you run collect?"
-        call charout , "Ok to create the cache directory? (Y/n) "
-        parse linein answer
+
+        answer = answerToQuestion("Ok to create the cache directory? (Y/n) ")
         call assert ("YES"~caselessAbbrev(answer, 1) | answer == ""), 98.900, "Cancelled as requested"
         call createDirectory cache
     end
@@ -274,8 +305,7 @@ Error 98 - Execution error.
 
     if delivery~exists then call assert delivery~isDirectory, 48.900, delivery "is not a directory"
     else do
-        call charout , "Ok to create the delivery directory? (Y/n) "
-        parse linein answer
+        answer = answerToQuestion("Ok to create the delivery directory? (Y/n) ")
         call assert ("YES"~caselessAbbrev(answer, 1) | answer == ""), 98.900, "Cancelled as requested"
         call createDirectory delivery
     end
@@ -299,9 +329,38 @@ Error 98 - Execution error.
 
 
 --------------------------------------------------------------------------------
+::class "NullOutput"
+
+-- nothing displayed
+::method charOut class
+::method flush class
+::method lineOut class
+::method say class
+
+
+--------------------------------------------------------------------------------
+::routine "trySystem" public
+    use strict arg command, verbose=.false
+    verbose |= .verbose
+
+    if verbose then .traceOutput~say("Try address system" command)
+    .error~destination(.NullOutput)
+    address system (command) with error stem error.
+    .error~destination -- restore
+
+    if verbose then do
+        do i = 1 to error.0
+            .error~say(error.i)
+        end
+    end
+
+    return RC
+
+
+--------------------------------------------------------------------------------
 ::routine "system" public
     use strict arg command, verbose=.false
-    verbose |= .verboseAddress
+    verbose |= .verbose
 
     if verbose then .traceOutput~say("address system" command)
     address system (command)
@@ -314,7 +373,7 @@ Error 98 - Execution error.
 --------------------------------------------------------------------------------
 ::routine "gitCollect" public
     use strict arg URL, cache, localRepo, verbose=.false
-    verbose |= .verboseGitCollect
+    verbose |= .verbose
 
     call assertRelativePathWithoutDrive localRepo
     localRepo = .File~new(localRepo, cache)
@@ -340,7 +399,7 @@ Error 98 - Execution error.
     -- This routine takes one additional argument compared to gitCollect:
     -- an array of components to sparse-checkout.
     use strict arg URL, cache, localRepo, components, verbose=.false
-    verbose |= .verboseGitSparseCollect
+    verbose |= .verbose
 
     call assertRelativePathWithoutDrive localRepo
     localRepo = .File~new(localRepo, cache)
@@ -371,7 +430,7 @@ Error 98 - Execution error.
 --------------------------------------------------------------------------------
 ::routine "svnCollect" public
     use strict arg URL, cache, localRepo, verbose=.false
-    verbose |= .verboseSvnCollect
+    verbose |= .verbose
 
     call assertRelativePathWithoutDrive localRepo
     localRepo = .File~new(localRepo, cache)
@@ -387,6 +446,133 @@ Error 98 - Execution error.
         call changeDirectory cache,                                 verbose
         call system "svn checkout" quoted(URL) quoted(localRepo),   verbose
     end
+
+
+--------------------------------------------------------------------------------
+::routine downloadURL private
+    -- Downloaded only if the local file does not exist.
+    -- Always return the downloaded file as an instance of .file.
+    -- Uses curl.
+    -- I abandonned Powershell Invoke-WebRequest because it doesn't support SourceForge.
+    -- Anyway, curl is available in Windows 10/11.
+    use strict arg URL, cache, verbose=.false
+    verbose |= .verbose
+
+    call changeDirectory cache, verbose
+
+    -- If SourceForge URL, remove trailing "/download" if present
+    URL = URL~strip
+    if URL~startsWith("https://sourceforge.net/projects/") then do
+        if URL~endsWith("/download") then URL = URL~left(URL~length - "/download"~length)
+    end
+
+    settings = prettySettings()
+    .traceOutput~say(settings~download quoted(URL))
+
+    filename = .File~new(URL)~name
+    filename = .File~new(filename, cache)
+    if filename~exists then do
+        .traceOutput~say("No download needed; already available")
+        return filename
+    end
+
+    redirectErrorsToNull = "2>/dev/null"
+    if .RexxInfo~platform~caselessEquals("WINDOWSNT") then redirectErrorsToNull = "2>nul"
+    if verbose then redirectErrorsToNull = ""
+
+    -- By default, curl on Windows does not display download progress.
+    -- Pfff... even with --progress-bar, it doesn't show any progress.
+    progress = ""
+    if .RexxInfo~platform~caselessEquals("WINDOWSNT") then progress = "--progress-bar"
+    command = 'curl' progress '--noproxy "*" --insecure -L --output' quoted(filename) quoted(URL) redirectErrorsToNull
+    call system command, verbose
+
+    return filename
+
+
+--------------------------------------------------------------------------------
+::routine unzipFile private
+    -- Unzip only if the local directory does not exist, or is older
+    -- If needed, the older directory is moved to trash
+    use strict arg zipFile, cache, localRepo, verbose=.false
+    verbose |= .verbose
+
+    call assertRelativePathWithoutDrive localRepo
+    localRepo = .File~new(localRepo, cache)
+
+    settings = prettySettings()
+    prettyZipFile = quoted(relativePath(zipFile))~left(settings~width)
+    prettyLocalRepo = quoted(relativePath(localRepo))
+    .traceOutput~say(settings~unzip prettyZipFile "to" prettyLocalRepo)
+
+    if localRepo~exists then do
+        zipFileDateTime = zipFile~lastModified
+        localRepoDateTime = localRepo~lastModified
+        if .nil \== zipFileDateTime, .nil \== localRepoDateTime, zipFileDateTime <= localRepoDateTime then do
+            .traceOutput~say("No need to unzip; directory already available")
+            return .false
+        end
+        call moveToTrash localRepo, cache
+    end
+
+    redirectErrorsToNull = "2>/dev/null"
+    if .RexxInfo~platform~caselessEquals("WINDOWSNT") then redirectErrorsToNull = "2>nul"
+    if verbose then redirectErrorsToNull = ""
+
+    tryUnzip = .true
+    tryPwsh = .true
+    tryPowershell = .true
+
+    RC = -1
+    if tryUnzip then do
+        command = 'unzip -q' quoted(zipFile) '-d' quoted(localRepo) redirectErrorsToNull
+        RC = trySystem(command, verbose)
+        RC_unzip = RC
+    end
+    if RC \== 0, tryPwsh then do
+        command = 'pwsh -Command "Expand-Archive -Path' quoted(zipFile, "'") '-DestinationPath' quoted(localRepo) '-Force | Out-Null"' redirectErrorsToNull
+        RC = trySystem(command, verbose)
+        RC_pwsh = RC
+    end
+    if RC \== 0, tryPowershell then do
+        command = 'powershell -Command "Expand-Archive -Path' quoted(zipFile, "'") '-DestinationPath' quoted(localRepo) '-Force | Out-Null"' redirectErrorsToNull
+        RC = trySystem(command, verbose)
+        RC_powershell = RC
+    end
+
+    if RC \== 0 then do
+        if RC == -1 then errorText = "No unzipper is active, fix the 'unzipFile' routine"
+        else do
+            errorText = ""
+            if tryUnzip      then errorText ||= endOfLine() || "Tried unzip, RC =" RC_unzip
+            if tryPwsh       then errorText ||= endOfLine() || "Tried pwsh Expand-Archive, RC =" RC_pwsh
+            if tryPowershell then errorText ||= endOfLine() || "Tried powershell Expand-Archive, RC =" RC_powershell
+        end
+        call assert RC == 0, -
+                    48.900, -
+                    "An error occured while unzipping" || .RexxInfo~endofline || -
+                    quoted(zipFile) || .RexxInfo~endofline || -
+                    errorText
+    end
+
+    return .true
+
+    endOfLine:
+        -- Insert an endOfLine if errorText not empty
+        if errorText == "" then return ""
+        return .RexxInfo~endofline
+
+
+--------------------------------------------------------------------------------
+::routine zipCollect public
+    -- Return true if cache updated.
+    -- Return false if download and unzip not needed.
+    use strict arg URL, cache, localRepo, verbose=.false
+    verbose |= .verbose
+
+    call downloadURL URL, cache, verbose
+    call unzipFile result, cache, localRepo, verbose
+    return result
 
 
 --------------------------------------------------------------------------------
@@ -414,11 +600,12 @@ Error 98 - Execution error.
 
 --------------------------------------------------------------------------------
 ::routine "copyFile" public
-    use strict arg sourceFile, destDir
+    use strict arg sourceFile, destDir, destFile=""
 
     sourceFile = .File~new(sourceFile)
     destDir = .File~new(destDir)
-    destFile = .File~new(sourceFile~name, destDir)
+    if destFile == "" then destFile = sourceFile~name
+    destFile = .File~new(destFile, destDir)
 
     settings = prettySettings()
     prettySourceFile = quoted(relativePath(sourceFile))~left(settings~width)
@@ -439,7 +626,8 @@ Error 98 - Execution error.
 ::routine "copyOrMirrorDirectory" private
     -- How: "C" to copy, "M" to mirror
     -- What: "C" for contents, "D" for directory itself
-    use strict arg how, what, sourceDir, destDir, verbose=.false
+    use strict arg how, what, sourceDir, destDir, recursive=.true, verbose=.false
+    verbose |= .verbose
 
     sourceDir = .File~new(sourceDir)
     destDir = .File~new(destDir)
@@ -459,36 +647,57 @@ Error 98 - Execution error.
             -- robocopy RC values between 0 and 7 are considered success codes
             successCodeMax = 7
 
-            mirror = ""
-            if how == "M" then mirror = "/MIR"
+            copySubdirectories = ""
+            if recursive then copySubdirectories = "/E"
+
+            purge = ""
+            if how == "M" then purge = "/PURGE"
 
             if what == "D" then do
                 sourceDirName = sourceDir~name
                 destDir = .File~new(sourceDirName, destDir)
             end
 
-            -- use quite = "" if you want to see all the details
+            -- use quiet = "" if you want to see all the details
             quiet = "/NFL /NDL /NJH /NJS"
-            exclude = "/XD .git /XF .gitattributes .gitignore .DS_Store *.zip"
+            exclude = "/XD .git .svn /XF .gitattributes .gitignore .DS_Store *.zip"
 
-            command = "robocopy" quoted(sourceDir) quoted(destDir) mirror quiet exclude "/R:0 /W:0"
-            if verbose | .verboseRobocopy | .verboseAddress then .traceOutput~say("address system" command)
+            command = "robocopy" quoted(sourceDir) quoted(destDir) copySubdirectories purge quiet exclude "/R:0 /W:0"
+            if verbose then .traceOutput~say("address system" command)
             address system (command)
             end
 
         when "LINUX", "DARWIN" then do
             successCodeMax = 0
 
-            delete = "--delete" -- sometimes warning "<directory> not empty, cannot delete"
-            delete = "--delete-after --delete-excluded" -- An AI said it's better with these options
-            if how == "C" then delete = ""
+            -- Archive mode (preserves permissions/timestamps).
+            -- Similar to -a (shorthand for -Dgloprt), but without "r".
+            archive = "-Dglopt"
 
-            if what == "C" then sourceDir ||= "/" -- the trailing slash changes semantics: copy contents
+            -- Depending on the options, I may need to add the wildcard character "*" to sourceDir.
+            -- Wildcards are not expanded if enclosed in quotes.
+            -- That's why I enclose in quotes now, before appending "*"
+            quotedSourceDir = quoted(sourceDir)
+            if recursive then do
+                copySubtree = "--recursive"
+                if what == "C" then quotedSourceDir ||= "/" -- the trailing slash changes semantics: copy contents
+            end
+            else do
+                copySubtree = ""
+                if what == "D" then do
+                    sourceDirName = sourceDir~name
+                    destDir = .File~new(sourceDirName, destDir)
+                end
+                quotedSourceDir ||= "/*"
+            end
 
-            exclude = "--exclude='.git' --exclude='.gitattributes' --exclude='.gitignore' --exclude='.DS_Store' --exclude='*.zip'"
+            delete = ""
+            if how == "M" then delete = "--delete-after --delete-excluded" -- An AI said it's better with these options
 
-            command = "rsync -a" delete exclude quoted(sourceDir) quoted(destDir)
-            if verbose | .verboseRsync | .verboseAddress then .traceOutput~say("address system" command)
+            exclude = "--exclude='.git' --exclude='.svn' --exclude='.gitattributes' --exclude='.gitignore' --exclude='.DS_Store' --exclude='*.zip'"
+
+            command = "rsync" archive copySubtree delete exclude quotedSourceDir quoted(destDir)
+            if verbose then .traceOutput~say("address system" command)
             address system (command)
             end
 
@@ -509,37 +718,37 @@ Error 98 - Execution error.
 --------------------------------------------------------------------------------
 ::routine "copyDirD" public
     -- copyDirD copies the directory itself (as opposed to copyDirC, which copies its contents)
-    use strict arg sourceDir, destDir
+    use strict arg sourceDir, destDir, recursive=.true
 
     -- C D: Copy Directory
-    call copyOrMirrorDirectory "C", "D", sourceDir, destDir
+    call copyOrMirrorDirectory "C", "D", sourceDir, destDir, recursive
 
 
 --------------------------------------------------------------------------------
 ::routine "copyDirC" public
     -- copyDirC copies the directory contents (as opposed to copyDirD, which copies the directory itself)
-    use strict arg sourceDir, destDir
+    use strict arg sourceDir, destDir, recursive=.true
 
     -- C C: Copy Contents
-    call copyOrMirrorDirectory "C", "C", sourceDir, destDir
+    call copyOrMirrorDirectory "C", "C", sourceDir, destDir, recursive
 
 
 --------------------------------------------------------------------------------
 ::routine "mirrorDirD" public
     -- mirrorDirD mirrors the directory itself (as opposed to mirrorDirC, which mirrors its contents)
-    use strict arg sourceDir, destDir
+    use strict arg sourceDir, destDir, recursive=.true
 
     -- M D: Mirror Directory
-    call copyOrMirrorDirectory "M", "D", sourceDir, destDir
+    call copyOrMirrorDirectory "M", "D", sourceDir, destDir, recursive
 
 
 --------------------------------------------------------------------------------
 ::routine "mirrorDirC" public
     -- mirrorDirC mirrors the directory contents (as opposed to mirrorDirD, which mirrors the directory itself)
-    use strict arg sourceDir, destDir
+    use strict arg sourceDir, destDir, recursive=.true
 
     -- M C: Mirror Contents
-    call copyOrMirrorDirectory "M", "C", sourceDir, destDir
+    call copyOrMirrorDirectory "M", "C", sourceDir, destDir, recursive
 
 
 --------------------------------------------------------------------------------
@@ -635,7 +844,7 @@ Error 98 - Execution error.
     select case status
         when 1 then do
             settings = prettySettings()
-            .traceOutput~say(settings~createdDir quoted(relativePath(path)))
+            .traceOutput~say(settings~createDir quoted(relativePath(path)))
             end
         when -1 then do
             raise syntax 48.900 array ( -
@@ -658,7 +867,7 @@ Error 98 - Execution error.
 --------------------------------------------------------------------------------
 ::routine "changeDirectory" public
     use strict arg path, verbose=.false
-    verbose |= .verboseChangeDirectory
+    verbose |= .verbose
 
     path = .File~new(path)
     if verbose then .traceOutput~say("Change directory to" quoted(path)) -- don't use relativePath, I get "" when testing from script
@@ -679,9 +888,44 @@ Error 98 - Execution error.
 
 
 --------------------------------------------------------------------------------
+::routine "moveToTrash" public
+    -- It's not the system trash, but the idea is the same.
+    -- Don't delete permanently, move the source to cache/trash with a unique
+    -- name. The unicity is implemented with a counter.
+    -- source is a file or directory.
+    use strict arg source, cache
+
+    source = .File~new(source)
+    if \ source~exists then return -- nothing to move
+
+    trash = .File~new("trash", cache)
+    call createDirectory trash
+
+    sourceName = source~name
+    -- search for an unused target name
+    do i = 1
+        target = .File~new(sourceName"-"i, trash)
+        if \ target~exists then leave
+    end
+
+    settings = prettySettings()
+    prettySource = quoted(relativePath(source))~left(settings~width)
+    prettyTarget = quoted(relativePath(target))
+    .traceOutput~say(settings~move prettySource "to" prettyTarget)
+
+    call SysFileMove source, target
+    call assert result == 0, -
+                48.900, -
+                "An error occured while moving the file" || .RexxInfo~endofline || -
+                quoted(source) || .RexxInfo~endofline || -
+                "to" || .RexxInfo~endofline || -
+                quoted(target)
+
+
+--------------------------------------------------------------------------------
 ::routine "pushd" public
     use strict arg directory=(directory()), verbose=.false
-    verbose |= .verbosePushdPopd
+    verbose |= .verbose
 
     if \ .directoryStack~isa(.Queue) then .local~directoryStack = .Queue~new
     .directoryStack~push(directory())
@@ -691,12 +935,42 @@ Error 98 - Execution error.
 --------------------------------------------------------------------------------
 ::routine "popd" public
     use strict arg verbose=.false
-    verbose |= .verbosePushdPopd
+    verbose |= .verbose
 
     call assert .directoryStack~isa(.Queue), 98.900, "Internal error: popd was called before pushd"
     directory = .directoryStack~pull
     call assert .NIL \== .directory, 98.900, "Internal error: popd was called too many times (empty stack)"
     call changeDirectory directory, verbose
+
+
+--------------------------------------------------------------------------------
+::routine isaTerminal private
+    -- Return .true if the specified stream is a terminal (no redirection, no pipe).
+    -- streamName is "stdin", "stdout" or "stderr".
+    -- if unknown platform or unknown stream, return .false.
+    use strict arg streamName
+
+    select case .RexxInfo~platform~upper
+        when "WINDOWSNT" then do
+            select case streamName
+                when "stdin"  then "timeout 0 1>nul 2>nul" -- keep it, faster than powershell
+                when "stdout" then 'powershell -NoProfile -Command "exit [int][Console]::IsOutputRedirected"'
+                when "stderr" then 'powershell -NoProfile -Command "exit [int][Console]::IsErrorRedirected"'
+                otherwise RC = 1 -- unknown stream
+            end
+        end
+        when "LINUX", "DARWIN" then do
+            select case streamName
+                when "stdin"  then "[ -t 0 ]"
+                when "stdout" then "[ -t 1 ]"
+                when "stderr" then "[ -t 2 ]"
+                otherwise RC = 1 -- unknown stream
+            end
+        end
+        otherwise RC = 1 -- unknown platform
+    end
+
+    return (RC == 0)
 
 
 --------------------------------------------------------------------------------
@@ -813,13 +1087,19 @@ copies, extra files, and successful copies) happened in the same run.
     Archive mode (preserves permissions/timestamps).
     Shorthand for -Dgloprt.
 
+-D
+    Also transfer device and special files.  Shorthand for --devices --specials.
+
 --del, --delete
     Removes files from the destination not present in the source
     (equivalent to Robocopy's /MIR). Only applicable with -r.
 
--n, --dry-run
-   Do not actually modify the destination.
-   Mainly useful in combination with -v.
+-g, --group
+    Set the group name to match the source.
+    For example, group "kristaps" with ID 1000 on a remote server is matched to
+    group "kristaps" on the local machine with ID 2000.
+    If --numeric-ids is also given or if the remote group name is unknown on the
+    local machine, set the numeric group ID to match the source instead.
 
 --info option to control output:
     NOT SUPPORTED on macOS :-(((
@@ -829,6 +1109,25 @@ copies, extra files, and successful copies) happened in the same run.
 
     Example
         rsync -a --info=NAME,DEL,FLIST0 /source/ /destination/
+
+-l, --links
+    Also transfer symbolic links.
+    The link is transferred as a standalone file: if the destination does not
+    exist, it will be broken.
+
+-n, --dry-run
+   Do not actually modify the destination.
+   Mainly useful in combination with -v.
+
+-o, --owner
+    Set the user name to match the source, with similar matching logic as for -g.
+    If --numeric-ids is also given or if the remote user name is unknown on the
+    local machine, set the numeric user ID to match the source instead.
+    Only works if run as root.
+
+-p, --perms
+    Set destination file or directory permissions to match the source when it is
+    updated.
 
 -r, --recursive
     If source designates a directory, synchronise the directory and
@@ -845,6 +1144,10 @@ copies, extra files, and successful copies) happened in the same run.
     itself into the destination.
         rsync -r dir new-dir
         → Creates new-dir/dir/file1, new-dir/dir/file2, etc.
+
+-t, --times
+    Set destination file and directory modification time to match the source
+    when it is updated or created.
 
 -v, --verbose
     Verbose output. Specify once for files being transferred, twice for specific
