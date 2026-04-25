@@ -476,15 +476,7 @@ Error 98 - Execution error.
         return filename
     end
 
-    redirectErrorsToNull = "2>/dev/null"
-    if .RexxInfo~platform~caselessEquals("WINDOWSNT") then redirectErrorsToNull = "2>nul"
-    if verbose then redirectErrorsToNull = ""
-
-    -- By default, curl on Windows does not display download progress.
-    -- Pfff... even with --progress-bar, it doesn't show any progress.
-    progress = ""
-    if .RexxInfo~platform~caselessEquals("WINDOWSNT") then progress = "--progress-bar"
-    command = 'curl' progress '--noproxy "*" --insecure -L --output' quoted(filename) quoted(URL) redirectErrorsToNull
+    command = 'curl' '--noproxy "*" --insecure -L --output' quoted(filename) quoted(URL)
     call system command, verbose
 
     return filename
@@ -541,6 +533,7 @@ Error 98 - Execution error.
     end
 
     if RC \== 0 then do
+        call moveToTrash localRepo, cache -- If the folder was created, delete it because it is invalid.
         if RC == -1 then errorText = "No unzipper is active, fix the 'unzipFile' routine"
         else do
             errorText = ""
