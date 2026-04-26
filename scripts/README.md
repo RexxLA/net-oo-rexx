@@ -47,7 +47,8 @@ rexx deliver_rexx-parser [cache [delivery]]
     - Multi-step HTTP redirects (301 → 302 → actual file)
     - A mirror cookie is set during the redirect
 
-  If an error occurs, restart the collect script until no errors remain.
+    If an error occurs, delete the offending ZIP file (its content is likely
+    HTML), then restart the collect script until no errors remain.
   
 
 ### Naming conventions
