@@ -1,7 +1,7 @@
 signal on syntax name error
 
 use arg not_used -- only .SysCArgs is used
-call assert .SysCArgs~items <= 2, 93.900, "0..2 argument(s) expected: [cache [delivery]]"
+call assert .SysCArgs~items <= 1, 93.900, "0..1 argument(s) expected: [cache]"
 
 cache = setupCache(.SysCArgs[1])
 
