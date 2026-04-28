@@ -1,8 +1,18 @@
 # Scripts
 
-## Collect and deliver
+## Collect, deliver and release
 
 ### Quick start
+
+#### Platform-specific bundles
+
+```
+git clone https://github.com/RexxLA/net-oo-rexx.git
+rexx net-oo-rexx/scripts/collect    # creates ./cache
+rexx net-oo-rexx/scripts/release    # creates ./release
+```
+
+#### Platform-agnostic bundle
 
 ```
 git clone https://github.com/RexxLA/net-oo-rexx.git
@@ -10,12 +20,12 @@ rexx net-oo-rexx/scripts/collect    # creates ./cache
 rexx net-oo-rexx/scripts/deliver    # creates ./delivery
 ```
 
-
 ### Usage
 
 ```
 rexx collect [cache]
 rexx deliver [cache [delivery]]
+rexx release [cache [release]]
 ```
 
 It's also possible to execute the per-component scripts directly.
@@ -32,15 +42,19 @@ rexx deliver_rexx-parser [cache [delivery]]
 
 **Notes**
 
-- The updates to `cache` and `delivery` are incremental.  
+- The updates to `cache`, `delivery` and `release` are incremental.  
   You can re-run the scripts at any time.
 
-- The resulting `delivery` directory is ready to use as a portable delivery.  
-  Follow the instructions in [readme.txt][readme.txt].
+- The resulting `delivery` directory is ready to use as a platform-agnostic
+  bundle that does not include ooRexx. Follow the instructions in [readme.txt][readme.txt].
+
+- The resulting `release` directory contains platform-specific bundles
+  that include ooRexx, ready for release on GitHub.
 
 - Tested on Windows, WSL Ubuntu and macOS.
 
-- On Windows, the executable bit for Linux and macOS is not set.
+- On Windows, the executable bit for Linux and macOS is not set. The symbolic
+  links are lost. DON'T create releases for macOS or Ubuntu on Windows!!!!
 
 - SourceForge is unfriendly to automated downloads:
     - Non-browser agents get redirected to the project page
@@ -48,7 +62,7 @@ rexx deliver_rexx-parser [cache [delivery]]
     - A mirror cookie is set during the redirect
 
     If an error occurs, delete the offending ZIP file (its content is likely
-    HTML), then restart the collect script until no errors remain.
+    HTML), then restart the script until no errors remain.
   
 
 ### Naming conventions
@@ -70,23 +84,30 @@ Example with ooRexx:
 - `deliver_oorexx_incubator_regex`
 - `deliver_oorexx_test_trunk`
 
+The `release` scripts are named after their target platform.
 
-### Cache and delivery
+- `release_macos`
+- `release_ubuntu`
+- `release_windows`
+
+
+### Cache, delivery and release
 
 The default for `cache` is `./cache`.  
-The default for `delivery` is `./delivery`.
+The default for `delivery` is `./delivery`.  
+The default for `release` is `./release`.
 
-If `cache` or `delivery` does not exist then a confirmation is requested to 
-continue:  
-Press `Enter` to continue, or `Ctrl-C` to abort.
+If `cache`, `delivery` or `release` does not exist then a confirmation is
+requested to continue:  
+_Ok to create the cache|delivery|release directory? (Y/n)_
 
 A cache is simply a set of components collected using `svn` or `git`, or downloaded.  
 The `collect` scripts prevent the creation of a cache inside an existing SVN 
 working copy or Git clone.
 
 > [!CAUTION]
-> Do not add files to a delivery directory created by `deliver`.  
-> The `deliver` scripts use `robocopy` or `rsync` in mirroring mode.  
+> Do not add files to a directory created by `deliver` or `release`.  
+> The `deliver` and `release` scripts use `robocopy` or `rsync` in mirroring mode.  
 > Any files in the destination that are not present in the source will be removed.
 >
 > Exception: mirroring mode is not used for the delivery's root directory, as this
@@ -101,13 +122,32 @@ working copy or Git clone.
 
 ### When preparing a new release
 
-- Delete the previous `cache` and `delivery` directories.
-- Run `collect`.
-- Run `deliver`.
+#### Checklist
+
+Check if the URLs are up to date:
+
+- `collect_bsf4oorexx850.rex`:  
+  check the BSF4ooRexx URL.
+- `collect_netrexx.rex`:  
+  check the NetRexx URL.
+- `collect_oorexx.rex`:  
+  check the portable URL, check the platforms.
+
+#### Cleanup
 
 Deleting the directories is optional but recommended, to avoid delivering obsolete
 files that may have been removed.
  
+- Delete the previous `cache`, `delivery` and `release` directories.
+
+#### Bundles
+
+- Run `collect`.
+- Run `deliver` if you want to release a platform-agnostic bundle that does not
+  include ooRexx binaries.
+- Run `release` if you want to release platform-specific bundles that include
+  ooRexx binaries.
+
 
 ### When refining the next release
 

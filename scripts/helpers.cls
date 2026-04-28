@@ -20,7 +20,7 @@ Error 98 - Execution error.
 
 
 --------------------------------------------------------------------------------
-::routine getEnvironmentBoolean
+::routine "getEnvironmentBoolean"
     -- Get varname boolean value from ENVIRONMENT (case sensitive), store it in .local[varname~upper]
     use strict arg varname, defaultValue=.false
 
@@ -51,17 +51,19 @@ Error 98 - Execution error.
     settings~createDir  = "Create dir "
     settings~delivery   = "Delivery = "
     settings~download   = "Download   "
-    settings~github     = "Github =   "
+    settings~getHTML    = "Get HTML   "
+    settings~localClone = "LocalClone="
     settings~mirrorDir  = "Mirror dir "     -- the first trailing space will be replaced by one letter: "C" or "D"
     settings~move       = "Move       "
     settings~renameDir  = "Rename dir "
+    settings~release    = "Release =  "
     settings~unzip      = "Unzip      "
 
     return settings
 
 
 --------------------------------------------------------------------------------
-::routine replaceFirstTrailingSpace private
+::routine "replaceFirstTrailingSpace" private
     --     "Mirror dir " --> "Mirror dirC"
     --     "Copy dir   " --> "Copy dirC  "
     use strict arg string, character
@@ -134,10 +136,10 @@ Error 98 - Execution error.
         pathDrive = filespec("drive", path)
         currentDrive = filespec("drive", directory())
         call assert pathDrive == currentDrive, 88.900, -
-            "Unsupported path:" || .RexxInfo~endofline || -
-            quoted(path) || .RexxInfo~endofline || -
-            "Do not specify the drive letter'"pathDrive"'." || .RexxInfo~endofline || -
-            "Instead, make sure you are on the correct drive." || .RexxInfo~endofline || -
+            "Unsupported path:" || .endOfLine || -
+            quoted(path) || .endOfLine || -
+            "Do not specify the drive letter'"pathDrive"'." || .endOfLine || -
+            "Instead, make sure you are on the correct drive." || .endOfLine || -
             "The current drive is '"currentDrive"'."
         call assert \ path~startsWith("\\"), 88.900, "Windows UNC paths starting with \\ are not supported"
     end
@@ -164,7 +166,7 @@ Error 98 - Execution error.
     if check \== 0 then do
         errorText = "Expected a relative path"
         if check == 2 then errorText ||= " without a drive letter"
-        errorText ||= "." || .RexxInfo~endofline
+        errorText ||= "." || .endOfLine
         errorText ||= "Got" quoted(path)
         call assert check == 0, 88.900, errorText
     end
@@ -189,7 +191,7 @@ Error 98 - Execution error.
     do while path \== "" & .NIL \== path
         dot_git = .File~new(".git", path)
         call assert \ dot_git~exists, 98.900, -
-                    "The cache can't be inside a Git repository, found:" || .RexxInfo~endofline || -
+                    "The cache can't be inside a Git repository, found:" || .endOfLine || -
                     dot_git
         path = .File~new(path)~parent
     end
@@ -203,7 +205,7 @@ Error 98 - Execution error.
     do while path \== "" & .NIL \== path
         dot_svn = .File~new(".svn", path)
         call assert \ dot_svn~exists, 98.900, -
-                    "The cache can't be inside an SVN working copy, found:" || .RexxInfo~endofline || -
+                    "The cache can't be inside an SVN working copy, found:" || .endOfLine || -
                     dot_svn
         path = .File~new(path)~parent
     end
@@ -264,8 +266,9 @@ Error 98 - Execution error.
 
 --------------------------------------------------------------------------------
 ::routine "setupCache" public
-    use strict arg cache, okToCreate=.true
+    use strict arg cache, default, okToCreate=.true
 
+    if cache~isNIL then cache = default
     if cache~isNIL then cache = "cache"
     cache = .File~new(cache)
     call assertSupportedPath cache
@@ -293,8 +296,9 @@ Error 98 - Execution error.
 
 --------------------------------------------------------------------------------
 ::routine "setupDelivery" public
-    use strict arg delivery
+    use strict arg delivery, default
 
+    if delivery~isNIL then delivery = default
     if delivery~isNIL then delivery = "delivery"
     delivery = .File~new(delivery)
     call assertSupportedPath delivery
@@ -314,18 +318,41 @@ Error 98 - Execution error.
 
 
 --------------------------------------------------------------------------------
-::routine "setupGithub" public
+::routine "setupRelease" public
+    use strict arg release, default
+
+    if release~isNIL then release = default
+    if release~isNIL then release = "release"
+    release = .File~new(release)
+    call assertSupportedPath release
+
+    .local~releaseParent = release~parentFile -- see relativePath
+    settings = prettySettings()
+    .traceOutput~say(settings~release quoted(release))
+
+    if release~exists then call assert release~isDirectory, 48.900, release "is not a directory"
+    else do
+        answer = answerToQuestion("Ok to create the release directory? (Y/n) ")
+        call assert ("YES"~caselessAbbrev(answer, 1) | answer == ""), 98.900, "Cancelled as requested"
+        call createDirectory release
+    end
+
+    return release
+
+
+--------------------------------------------------------------------------------
+::routine "setupLocalClone" public
     use strict arg -- none
 
     parse source . . thisPath
     scripts = .File~new(thisPath)~parentFile
-    github = scripts~parentFile
+    localClone = scripts~parentFile
 
-    .local~githubParent = github~parentFile -- see relativePath
+    .local~localCloneParent = localClone~parentFile -- see relativePath
     settings = prettySettings()
-    .traceOutput~say(settings~github quoted(github))
+    .traceOutput~say(settings~localClone quoted(localClone))
 
-    return github
+    return localClone
 
 
 --------------------------------------------------------------------------------
@@ -366,8 +393,24 @@ Error 98 - Execution error.
     address system (command)
     call assert RC == 0, -
                 98.900, -
-                command || .RexxInfo~endofline || -
+                command || .endOfLine || -
                 "RC should be 0; got" RC
+
+
+--------------------------------------------------------------------------------
+::routine "systemOutput" public
+    use strict arg command, verbose=.false
+    verbose |= .verbose
+
+    if verbose then .traceOutput~say("address system" command)
+    output = .array~new
+    address system (command) with output using (output)
+    call assert RC == 0, -
+                98.900, -
+                command || .endOfLine || -
+                "RC should be 0; got" RC
+
+    return output
 
 
 --------------------------------------------------------------------------------
@@ -449,7 +492,7 @@ Error 98 - Execution error.
 
 
 --------------------------------------------------------------------------------
-::routine downloadURL private
+::routine "downloadURL" private
     -- Downloaded only if the local file does not exist.
     -- Always return the downloaded file as an instance of .file.
     -- Uses curl.
@@ -458,7 +501,9 @@ Error 98 - Execution error.
     use strict arg URL, cache, verbose=.false
     verbose |= .verbose
 
-    call changeDirectory cache, verbose
+    downloads = .File~new("downloads", cache)
+    call createDirectory downloads
+    call changeDirectory downloads, verbose
 
     -- If SourceForge URL, remove trailing "/download" if present
     URL = URL~strip
@@ -470,7 +515,7 @@ Error 98 - Execution error.
     .traceOutput~say(settings~download quoted(URL))
 
     filename = .File~new(URL)~name
-    filename = .File~new(filename, cache)
+    filename = .File~new(filename, downloads)
     if filename~exists then do
         .traceOutput~say("No download needed; already available")
         return filename
@@ -483,7 +528,7 @@ Error 98 - Execution error.
 
 
 --------------------------------------------------------------------------------
-::routine unzipFile private
+::routine "unzipFile" private
     -- Unzip only if the local directory does not exist, or is older
     -- If needed, the older directory is moved to trash
     use strict arg zipFile, cache, localRepo, verbose=.false
@@ -500,7 +545,7 @@ Error 98 - Execution error.
     if localRepo~exists then do
         zipFileDateTime = zipFile~lastModified
         localRepoDateTime = localRepo~lastModified
-        if .nil \== zipFileDateTime, .nil \== localRepoDateTime, zipFileDateTime <= localRepoDateTime then do
+        if .NIL \== zipFileDateTime, .NIL \== localRepoDateTime, zipFileDateTime <= localRepoDateTime then do
             .traceOutput~say("No need to unzip; directory already available")
             return .false
         end
@@ -517,6 +562,10 @@ Error 98 - Execution error.
 
     RC = -1
     if tryUnzip then do
+        -- Pffff... Ubuntu's unzip requires the destination directory to already exist
+        -- checkdir:  cannot create extraction directory
+        -- macOS's unzip creates the directory!!!!
+        call createDirectory localRepo
         command = 'unzip -q' quoted(zipFile) '-d' quoted(localRepo) redirectErrorsToNull
         RC = trySystem(command, verbose)
         RC_unzip = RC
@@ -543,8 +592,8 @@ Error 98 - Execution error.
         end
         call assert RC == 0, -
                     48.900, -
-                    "An error occured while unzipping" || .RexxInfo~endofline || -
-                    quoted(zipFile) || .RexxInfo~endofline || -
+                    "An error occured while unzipping" || .endOfLine || -
+                    quoted(zipFile) || .endOfLine || -
                     errorText
     end
 
@@ -553,11 +602,11 @@ Error 98 - Execution error.
     endOfLine:
         -- Insert an endOfLine if errorText not empty
         if errorText == "" then return ""
-        return .RexxInfo~endofline
+        return .endOfLine
 
 
 --------------------------------------------------------------------------------
-::routine zipCollect public
+::routine "zipCollect" public
     -- Return true if cache updated.
     -- Return false if download and unzip not needed.
     use strict arg URL, cache, localRepo, verbose=.false
@@ -569,13 +618,80 @@ Error 98 - Execution error.
 
 
 --------------------------------------------------------------------------------
+::routine "getHTML" private
+    -- Downloads an HTML page; returns an array of strings.
+    -- Uses curl.
+    use strict arg URL, verbose=.false
+    verbose |= .verbose
+
+    settings = prettySettings()
+    .traceOutput~say(settings~getHTML quoted(URL))
+
+    command = 'curl' '--noproxy "*" --insecure -L -s' quoted(URL)
+    call systemOutput command, verbose
+
+    return result
+
+
+--------------------------------------------------------------------------------
+::routine "getLatestOORexxPortableZIPs" public
+    -- With an URL like "https://sourceforge.net/projects/oorexx/files/oorexx/5.3.0beta/portable",
+    -- returns a table of the most recent ZIP files indexed by platform.
+    use strict arg URL, verbose=.false
+    verbose |= .verbose
+
+    call getHTML URL, verbose
+
+    lines = result
+    /*
+    Expected format:
+        <th scope="row" headers="files_name_h"><a href="https://sourceforge.net/projects/oorexx/files/oorexx/5.3.0beta/portable/oorexx-5.3.0-13163.fedora43.x86_64-portable-release.zip/download"
+        <th scope="row" headers="files_name_h"><a href="https://sourceforge.net/projects/oorexx/files/oorexx/5.3.0beta/portable/oorexx-5.3.0-13163.linuxmint22.x86_64-portable-release.zip/download"
+        <th scope="row" headers="files_name_h"><a href="https://sourceforge.net/projects/oorexx/files/oorexx/5.3.0beta/portable/oorexx-5.3.0-13163.raspberrypios32.armv7l-portable-release.zip/download"
+        etc...
+    sorted from newest to oldest
+    */
+    portableZIPs = .stringTable~new
+    counter = 1
+    do line over lines
+        line = line~strip
+        if line~startsWith("<th ") & line~endsWith('-portable-release.zip/download"') then do
+            parse var line . '<a href="' ZIP_URL '"' .
+            call assert ZIP_URL \== "", 98.900, 'Missing <a href="..." in line' || .endOfLine || quoted(line)
+            ZIP_URL = ZIP_URL~left(ZIP_URL~length - "/download"~length) -- remove trailing "/download"
+            filename = .File~new(ZIP_URL)~name
+            -- oorexx-5.3.0-13163.fedora43.x86_64-portable-release.zip
+            parse var filename "oorexx-" version "-" revision "." platform "-portable-release.zip"
+            expectedFormat = "Expected format: oorexx-<version>-<revision>.<platform>-portable-release.zip"
+            call assert version \== "", 98.900, "Version not found in filename" quoted(filename) || .endOfLine || expectedFormat
+            call assert revision \== "", 98.900, "Revision not found in filename" quoted(filename) || .endOfLine || expectedFormat
+            call assert platform \== "", 98.900, "Platform not found in filename" quoted(filename) || .endOfLine || expectedFormat
+            if \ portableZIPs~hasIndex(platform) then portableZIPs[platform] = ZIP_URL -- store the newest
+        end
+    end
+
+    return portableZIPs
+
+
+--------------------------------------------------------------------------------
+::routine "getOORexxPortableZIP" public
+    use strict arg portableZIPs, platform
+
+    portableZIP = portableZIPs[platform]
+    call assert .NIL \== portableZIP, 98.900, "No portable ZIP for platform" quoted(platform)
+
+    return portableZIP
+
+
+--------------------------------------------------------------------------------
 ::routine "relativePath" public
     -- Absolute paths can be too long when displayed though traceOutput.
     -- This helper transforms an absolute path into a relative path by removing
-    -- the cache, delivery and net-oo-rexx prefixes, when applicable.
+    -- the cache, delivery, release and net-oo-rexx prefixes, when applicable.
     -- Example:
     --     "/usr/tmp/cache/executor/aFile"          --> "cache/executor/aFile"
     --     "/usr/tmp/delivery/executor/aFile"       --> "delivery/executor/aFile"
+    --     "/usr/tmp/release/aRelease/aFile"        --> "release/aRelease/aFile"
     --     "/local/rexx/net-oo-rexx/packages/regex" --> "net-oo-rexx/packages/regex"
     use strict arg path
 
@@ -583,12 +699,36 @@ Error 98 - Execution error.
     path = path~string
     cacheParent = .cacheParent~string -- can be .NIL or ".CACHEPARENT"
     deliveryParent = .deliveryParent~string -- can be .NIL or ".DELIVERYPARENT"
-    githubParent = .githubParent~string -- can be .NIL or ".GITHUBPARENT"
+    releaseParent = .releaseParent~string -- can be .NIL or ".DELIVERYPARENT"
+    localCloneParent = .localCloneParent~string -- can be .NIL or ".LOCALCLONEPARENT"
 
     if path~startsWith(cacheParent) then return path~substr(cacheParent~length + 2)
     if path~startsWith(deliveryParent) then return path~substr(deliveryParent~length + 2)
-    if path~startsWith(githubParent) then return path~substr(githubParent~length + 2)
+    if path~startsWith(releaseParent) then return path~substr(releaseParent~length + 2)
+    if path~startsWith(localCloneParent) then return path~substr(localCloneParent~length + 2)
     return path
+
+
+--------------------------------------------------------------------------------
+::routine "getUniqueSubdirectory" public
+    -- Given a directory hiearchy like:
+    --    path/
+    --        directory/
+    --            ...
+    -- returns directory as a string.
+    -- This is needed to work with ZIP files containing a top-level directory
+    -- that must be ignored when copying the hierarchy.
+    -- An error is raised if path has no directory, or several directories.
+    use strict arg path
+
+    path = .File~new(path)
+    files = path~listFiles
+    call assert .NIL \== files, 98.900, quoted(path) || .endOfLine || "is not a directory"
+    call assert files~items == 1, 98.900, quoted(path) || .endOfLine || "expected 1 subdirectory, found" files~items
+    subdirectory = files[1]
+    call assert subdirectory~isDirectory, 98.900, quoted(subdirectory) || .endOfLine || "is not a directory"
+
+    return subdirectory~name
 
 
 --------------------------------------------------------------------------------
@@ -609,9 +749,9 @@ Error 98 - Execution error.
     call SysFileCopy sourceFile, destFile
     call assert result == 0, -
                 48.900, -
-                "An error occured while copying the file" || .RexxInfo~endofline || -
-                quoted(sourceFile) || .RexxInfo~endofline || -
-                "to" || .RexxInfo~endofline || -
+                "An error occured while copying the file" || .endOfLine || -
+                quoted(sourceFile) || .endOfLine || -
+                "to" || .endOfLine || -
                 quoted(destFile)
 
 
@@ -619,11 +759,16 @@ Error 98 - Execution error.
 ::routine "copyOrMirrorDirectory" private
     -- How: "C" to copy, "M" to mirror
     -- What: "C" for contents, "D" for directory itself
-    use strict arg how, what, sourceDir, destDir, recursive=.true, verbose=.false
+    use strict arg how, what, sourceDir, destDir, recursive=.true, ignoreTopLevelDirectory=.false, verbose=.false
     verbose |= .verbose
 
     sourceDir = .File~new(sourceDir)
     destDir = .File~new(destDir)
+
+    if ignoreTopLevelDirectory then do
+        subdirectory = getUniqueSubdirectory(sourceDir)
+        sourceDir = .File~new(subdirectory, sourceDir)
+    end
 
     settings = prettySettings()
     prettySourceDir = quoted(relativePath(sourceDir))~left(settings~width)
@@ -684,12 +829,20 @@ Error 98 - Execution error.
                 quotedSourceDir ||= "/*"
             end
 
+            -- Ubuntu's rsync: --delete does not work without --recursive (-r) or --dirs (-d).
+            -- macOS's rsync (an old BSD version 2.6.9) is more lenient about this.
+            -- but Ubuntu's rsync refuses --delete when not recursive
             delete = ""
-            if how == "M" then delete = "--delete-after --delete-excluded" -- An AI said it's better with these options
+            if how == "M" & recursive then delete = "--delete-after --delete-excluded" -- An AI said it's better with these options
 
             exclude = "--exclude='.git' --exclude='.svn' --exclude='.gitattributes' --exclude='.gitignore' --exclude='.DS_Store' --exclude='*.zip'"
 
-            command = "rsync" archive copySubtree delete exclude quotedSourceDir quoted(destDir)
+            -- Pfff... Ubuntu's rsync doesn't create directories by default????
+            -- Must use --mkpath
+            extra = ""
+            if platform == "LINUX" then extra = "--mkpath"
+
+            command = "rsync" archive copySubtree delete exclude extra quotedSourceDir quoted(destDir)
             if verbose then .traceOutput~say("address system" command)
             address system (command)
             end
@@ -701,47 +854,47 @@ Error 98 - Execution error.
 
     call assert RC >= 0 & RC <= successCodeMax, -
                 48.900, -
-                "RC =" RC || .RexxInfo~endofline || -
-                "An error occured while copying the directory" || .RexxInfo~endofline || -
-                quoted(sourceDir) || .RexxInfo~endofline || -
-                "to" || .RexxInfo~endofline || -
+                "RC =" RC || .endOfLine || -
+                "An error occured while copying the directory" || .endOfLine || -
+                quoted(sourceDir) || .endOfLine || -
+                "to" || .endOfLine || -
                 quoted(destDir)
 
 
 --------------------------------------------------------------------------------
 ::routine "copyDirD" public
     -- copyDirD copies the directory itself (as opposed to copyDirC, which copies its contents)
-    use strict arg sourceDir, destDir, recursive=.true
+    use strict arg sourceDir, destDir, recursive=.true, ignoreTopLevelDirectory=.false, verbose=.false
 
     -- C D: Copy Directory
-    call copyOrMirrorDirectory "C", "D", sourceDir, destDir, recursive
+    call copyOrMirrorDirectory "C", "D", sourceDir, destDir, recursive, ignoreTopLevelDirectory, verbose
 
 
 --------------------------------------------------------------------------------
 ::routine "copyDirC" public
     -- copyDirC copies the directory contents (as opposed to copyDirD, which copies the directory itself)
-    use strict arg sourceDir, destDir, recursive=.true
+    use strict arg sourceDir, destDir, recursive=.true, ignoreTopLevelDirectory=.false, verbose=.false
 
     -- C C: Copy Contents
-    call copyOrMirrorDirectory "C", "C", sourceDir, destDir, recursive
+    call copyOrMirrorDirectory "C", "C", sourceDir, destDir, recursive, ignoreTopLevelDirectory, verbose
 
 
 --------------------------------------------------------------------------------
 ::routine "mirrorDirD" public
     -- mirrorDirD mirrors the directory itself (as opposed to mirrorDirC, which mirrors its contents)
-    use strict arg sourceDir, destDir, recursive=.true
+    use strict arg sourceDir, destDir, recursive=.true, ignoreTopLevelDirectory=.false, verbose=.false
 
     -- M D: Mirror Directory
-    call copyOrMirrorDirectory "M", "D", sourceDir, destDir, recursive
+    call copyOrMirrorDirectory "M", "D", sourceDir, destDir, recursive, ignoreTopLevelDirectory, verbose
 
 
 --------------------------------------------------------------------------------
 ::routine "mirrorDirC" public
     -- mirrorDirC mirrors the directory contents (as opposed to mirrorDirD, which mirrors the directory itself)
-    use strict arg sourceDir, destDir, recursive=.true
+    use strict arg sourceDir, destDir, recursive=.true, ignoreTopLevelDirectory=.false, verbose=.false
 
     -- M C: Mirror Contents
-    call copyOrMirrorDirectory "M", "C", sourceDir, destDir, recursive
+    call copyOrMirrorDirectory "M", "C", sourceDir, destDir, recursive, ignoreTopLevelDirectory, verbose
 
 
 --------------------------------------------------------------------------------
@@ -779,9 +932,9 @@ Error 98 - Execution error.
     call assert currentName~isDirectory, 48.900, currentName "is not a directory"
     call assert currentName~renameTo(newName), -
                 48.900, -
-                "An error occured while renaming the directory" || .RexxInfo~endofline || -
-                quoted(currentName) || .RexxInfo~endofline || -
-                "to" || .RexxInfo~endofline || -
+                "An error occured while renaming the directory" || .endOfLine || -
+                quoted(currentName) || .endOfLine || -
+                "to" || .endOfLine || -
                 quoted(newName)
 
 
@@ -841,14 +994,14 @@ Error 98 - Execution error.
             end
         when -1 then do
             raise syntax 48.900 array ( -
-                "An error occured while creating the directory" || .RexxInfo~endofline || -
-                quoted(path) || .RexxInfo~endofline || -
+                "An error occured while creating the directory" || .endOfLine || -
+                quoted(path) || .endOfLine || -
                 "A file with same name already exists" -
                 )
             end
         when -2 then do
             raise syntax 48.900 array ( -
-                "An error occured while creating the directory" || .RexxInfo~endofline || -
+                "An error occured while creating the directory" || .endOfLine || -
                 quoted(path) -
                 )
             end
@@ -867,15 +1020,15 @@ Error 98 - Execution error.
     newDirectory = directory(path)
     call assert directory() == path, -
                 48.900, -
-                "directory() should be" || .RexxInfo~endofline || -
-                quoted(path) || .RexxInfo~endofline || -
-                "got" || .RexxInfo~endofline || -
+                "directory() should be" || .endOfLine || -
+                quoted(path) || .endOfLine || -
+                "got" || .endOfLine || -
                 quoted(directory())
     call assert newDirectory == path, -
                 48.900, -
-                "newDirectory should be" || .RexxInfo~endofline || -
-                quoted(path) || .RexxInfo~endofline || -
-                "got" || .RexxInfo~endofline || -
+                "newDirectory should be" || .endOfLine || -
+                quoted(path) || .endOfLine || -
+                "got" || .endOfLine || -
                 quoted(newDirectory)
     return newDirectory
 
@@ -909,9 +1062,9 @@ Error 98 - Execution error.
     call SysFileMove source, target
     call assert result == 0, -
                 48.900, -
-                "An error occured while moving the file" || .RexxInfo~endofline || -
-                quoted(source) || .RexxInfo~endofline || -
-                "to" || .RexxInfo~endofline || -
+                "An error occured while moving the file" || .endOfLine || -
+                quoted(source) || .endOfLine || -
+                "to" || .endOfLine || -
                 quoted(target)
 
 
@@ -937,7 +1090,7 @@ Error 98 - Execution error.
 
 
 --------------------------------------------------------------------------------
-::routine isaTerminal private
+::routine "isaTerminal" private
     -- Return .true if the specified stream is a terminal (no redirection, no pipe).
     -- streamName is "stdin", "stdout" or "stderr".
     -- if unknown platform or unknown stream, return .false.
