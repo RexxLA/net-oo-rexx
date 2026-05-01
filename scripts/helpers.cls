@@ -25,6 +25,14 @@ Error 98 - Execution error.
     use strict arg varname, defaultValue=.false
 
     value = value(varname,, "ENVIRONMENT")
+
+    /*
+    Hum... that happens on Windows...
+    > set verbose=1 && rexx net-oo-rexx\scripts\collect_netrexx.rex
+    Warning 88.900 The value of the environment variable 'verbose' is '1 '. Expected 0 or 1, using 0
+    */
+    value = value~strip
+
     if value == "" then value = defaultValue
     -- Can't use assert here, because can't be trapped properly when ::requires "helpers.cls"
     condition = (value == "0" | value == "1")
