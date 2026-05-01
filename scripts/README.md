@@ -28,7 +28,7 @@ rexx deliver [cache [delivery]]
 rexx release [cache [release]]
 ```
 
-It's also possible to execute the per-component scripts directly.
+It is also possible to run the per-component scripts directly.
 
 ```
 rexx collect_oorexx [cache]
@@ -38,6 +38,13 @@ rexx deliver_oorexx_test_trunk [cache [delivery]]
 rexx collect_rexx-parser [cache]
 rexx deliver_rexx-parser [cache [delivery]]
 ...
+```
+
+You can also run the per-platform scripts directly.
+
+```
+rexx collect_oorexx [cache]
+rexx release_windows [cache [release]]
 ```
 
 **Notes**
