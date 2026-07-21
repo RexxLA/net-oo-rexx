@@ -31,8 +31,8 @@ To download click on the [Releases](https://github.com/RexxLA/net-oo-rexx/releas
 
 **Notes:**
 
-- After downloading the _Windows_ net-oo-rexx zip archive, run the following command before unzipping to allow all programs to run on Windows: _`powershell unblock-file *`_
-- After downloading the _macOS_ net-oo-rexx zip archive, run the following command before unzipping to allow all programs to run on macOS: _`xattr -d com.apple.quarantine *`_
+- After downloading the _`Windows`_ net-oo-rexx zip archive, run the following command before unzipping to allow all programs to run on Windows: _`powershell unblock-file *`_
+- After downloading the _`macOS`_ net-oo-rexx zip archive, run the following command before unzipping to allow all programs to run on macOS: _`xattr -d com.apple.quarantine *`_
 
 
 ## Maybe I should try ?
