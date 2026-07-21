@@ -12,10 +12,10 @@ The net-oo-rexx package comes with the following interesting goodies:
 - the latest stable ooRexx beta (e.g., ooRexx 5.3 beta) with full documentation and samples
 - ooRexx related usability packages
   - `oorexxshell`, [ooRexxShell (three tutorials)](https://jlfaucher.github.io/executor.master/demos/index.html): a powerful, nifty, ooRexx-aware command line shell, boosting productivity on the command line, will load all net-oo-rexx packages
-  - `rexxdebugger` - [A GUI Rexx debugger]( https://www.rexxla.org/presentations/2025/Rexx%20Debugger%20Presentation%20v2.pdf) (`rexxdebugger myRexxProgram.rex`, or `rexxdebugger tutorial.rex`)
-  - [rexx-parser with many accompanying utilities like syntax highlighting of your Rexx programs](https://rexx.epbcn.com/rexx-parser/) (`rexx highlight –a myRexxProgram.rex`)
+  - `rexxdebugger` - [A GUI Rexx debugger](https://www.rexxla.org/presentations/2025/Rexx%20Debugger%20Presentation%20v2.pdf) (`rexxdebugger myRexxProgram.rex`, or `rexxdebugger tutorial.rex`)
+  - [rexx-parser](https://rexx.epbcn.com/rexx-parser/) (`rexx highlight –a myRexxProgram.rex`)
   - `tracetool.rex` [The Rexx TraceTool](https://www.rexxla.org/presentations/2025/2025_05_TraceTool.pdf) `rexx tracetool –tr myRexxProgram.rex`, e.g. followed by `rexx tracetool –s myRexxProgram.rex_trace.xml` (show tracelog), or `rexx tracetool –s myRexxProgram.rex_trace.xml` (create profile report from tracelog)
-  - [Full ooRexx test suite; help sought for completing documentation, see included tests](https://www.oorexx.org/docs/pdf/ootest.pdf)
+  - [Full ooRexx test suite](https://www.oorexx.org/docs/pdf/ootest.pdf)
   - [The Unicode Tools Of Rexx (TUTOR)](https://rexx.epbcn.com/TUTOR/)
   - [BSF4ooRexx - the ooRexx-Java bridge](https://www.rexxla.org/presentations/2025/202505-03_IntroductionToBSF4ooRexx850_Tutorial.pdf)
     - `jdorfx`, see [JDORFX: Providing 3-D Graphics to ooRexx](https://www.rexxla.org/presentations/2025/2025-05-07_Jdorfx.pdf)
@@ -27,18 +27,15 @@ Many tools give a brief synopsis about what they do and what arguments they unde
 
 ## Where to download?
 
-Notes:
-
-- After downloading the Windows net-oo-rexx zip archive, run the following command before unzipping to allow all programs to run on Windows: `powershell unblock-file *`
-- After downloading the macOS net-oo-rexx zip archive, run the following command before unzipping to allow all programs to run on macOS: `xattr -d com.apple.quarantine *`
-
 To download click on the [Releases](https://github.com/RexxLA/net-oo-rexx/releases) section on the right-hand side.
 
-## Cartoon
+**Notes:**
+
+- After downloading the _Windows_ net-oo-rexx zip archive, run the following command before unzipping to allow all programs to run on Windows: _`powershell unblock-file *`_
+- After downloading the _macOS_ net-oo-rexx zip archive, run the following command before unzipping to allow all programs to run on macOS: _`xattr -d com.apple.quarantine *`_
+
+
+## Maybe I should try ?
 
 ![net-oo-rexx cartoon](20260517_net-oo-rexx-ChatGPT.png)
-
-<!--
- <img src="20260517_net-oo-rexx-ChatGPT.png" alt="Cartoon on net-oo-rexx" width="100%">
--->
 
