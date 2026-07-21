@@ -11,19 +11,19 @@ The net-oo-rexx package comes with the following interesting goodies:
 - NetRexx with full documentation  and samples
 - the latest stable ooRexx beta (e.g., ooRexx 5.3 beta) with full documentation and samples
 - ooRexx related usability packages
-  - [ooRexxShell (three tutorials)](https://jlfaucher.github.io/executor.master/demos/index.html) (`rexx oorexxshell`), a powerful, nifty, ooRexx-aware command line shell, boosting productivity on the command line, will load all net-oo-rexx packages
-  - `rexxdebugger` - [a GUI Rexx debugger]( https://www.rexxla.org/presentations/2025/Rexx%20Debugger%20Presentation%20v2.pdf) (`rexxdebugger myRexxProgram.rex`, or `rexxdebugger tutorial.rex`)
+  - `oorexxshell`, [ooRexxShell (three tutorials)](https://jlfaucher.github.io/executor.master/demos/index.html): a powerful, nifty, ooRexx-aware command line shell, boosting productivity on the command line, will load all net-oo-rexx packages
+  - `rexxdebugger` - [A GUI Rexx debugger]( https://www.rexxla.org/presentations/2025/Rexx%20Debugger%20Presentation%20v2.pdf) (`rexxdebugger myRexxProgram.rex`, or `rexxdebugger tutorial.rex`)
   - [rexx-parser with many accompanying utilities like syntax highlighting of your Rexx programs](https://rexx.epbcn.com/rexx-parser/) (`rexx highlight –a myRexxProgram.rex`)
-  - `tracetool.rex` [The Rexx TraceTool](https://www.rexxla.org/presentations/2025/2025_05_TraceTool.pdf) `rexx tracetool –tr myRexxProgram.rex`, e.g. followed by `rexx tracetool –s myRexxProgram.rex_trace.xml` (show tracelog), or `rexx tracetool –s myRexxProgram.rex_trace.xml ` (create profile report from tracelog)
-  - [full ooRexx test suite; help sought for completing documentation, see included tests](https://www.oorexx.org/docs/pdf/ootest.pdf)
+  - `tracetool.rex` [The Rexx TraceTool](https://www.rexxla.org/presentations/2025/2025_05_TraceTool.pdf) `rexx tracetool –tr myRexxProgram.rex`, e.g. followed by `rexx tracetool –s myRexxProgram.rex_trace.xml` (show tracelog), or `rexx tracetool –s myRexxProgram.rex_trace.xml` (create profile report from tracelog)
+  - [Full ooRexx test suite; help sought for completing documentation, see included tests](https://www.oorexx.org/docs/pdf/ootest.pdf)
   - [The Unicode Tools Of Rexx (TUTOR)](https://rexx.epbcn.com/TUTOR/)
-  - [BSF4ooRexx – the ooRexx-Java bridge](https://www.rexxla.org/presentations/2025/202505-03_IntroductionToBSF4ooRexx850_Tutorial.pdf)
-	jdorfx, see [JDORFX: Providing 3-D Graphics to ooRexx]( https://www.rexxla.org/events/presentation.rsp#:~:text=JDORFX%3A%20Providing%203%2DD%20Graphics%20to%20ooRexx)
-  - `regex`:  Rick McGuire’s regular expressions (from his sandbox), used by `oorexxshell`
+  - [BSF4ooRexx - the ooRexx-Java bridge](https://www.rexxla.org/presentations/2025/202505-03_IntroductionToBSF4ooRexx850_Tutorial.pdf)
+    - `jdorfx`, see [JDORFX: Providing 3-D Graphics to ooRexx](https://www.rexxla.org/presentations/2025/2025-05-07_Jdorfx.pdf)
+  - `regex`:  Rick McGuire's regular expressions (from his sandbox), used by `oorexxshell`
   - `log4rexx` [log4rexx - A log4j-Comparable Logging Framework for ooRexx Applications](https://www.rexxla.org/presentations/2007/ronyf2.pdf); see also [article](https://www.rexxla.org/presentations/2007/log4rexx_20070521.zip)
   - `dbus4oorexx` [The ooRexx DBus Bindings for Linux, MacOSX and Windows]( https://www.rexxla.org/presentations/2016/201608-dbusoorexx.pdf)
 
-Many tools give a brief synopsis about what they do and what arguments they understand if you just enter the name of the tool, e.g., ``
+Many tools give a brief synopsis about what they do and what arguments they understand if you just enter the name of the tool, e.g., `rexx tracetool.rex`
 
 ## Where to download?
 
@@ -36,7 +36,7 @@ To download click on the [Releases](https://github.com/RexxLA/net-oo-rexx/releas
 
 ## Cartoon
 
-Here a ![net-oo-rexx cartoon](20260517_net-oo-rexx-ChatGPT.png)
+![net-oo-rexx cartoon](20260517_net-oo-rexx-ChatGPT.png)
 
 <!--
  <img src="20260517_net-oo-rexx-ChatGPT.png" alt="Cartoon on net-oo-rexx" width="100%">
